@@ -1,15 +1,19 @@
 int MegaMotoPWMpin = 11;
-int speedtarget = 300; // number of loops between encoder clicks, so higher = slower 
-int powerMin = 23; // dependent on voltage. 
+int powerMin = 28; // dependent on voltage. 
 int power = powerMin; //current power
 int encoderpinA = 12;  // Connected to CLK on KY-040
 int encoderpinB = 13;  // Connected to DT on KY-040 // not needed
 int encoderPosition = 0; // current calculated position
 int encoderpinAPrev;  // holds prev in loop
 int encoderpinACurrent; // holds current pos in loop
+int encoderpinBPrev;  // holds prev in loop
+int encoderpinBCurrent; // holds current pos in loop
 char incomingCharacter;
 unsigned long prevClickTime;
+unsigned long newClickTime;
 unsigned long prevPowerChangeTime;
+unsigned long speedtarget = 100; // number of ms between encoder clicks, so higher = slower
+unsigned long speedchangebuffer = 20; //ms tolerance on speed target
 
 void setup() {
   Serial.begin(9600);           // set up Serial library at 9600 bps
@@ -29,7 +33,7 @@ void loop() {
   
     switch (incomingCharacter) {
        case '1':
-         encoderPosition = 800;
+         encoderPosition = 1020;
          //power = powerDefault;
          prevClickTime = millis();
         break;
@@ -43,30 +47,40 @@ void loop() {
       }
   }
   encoderpinACurrent = digitalRead(encoderpinA);
-  if (encoderpinACurrent != encoderpinAPrev)
+  encoderpinBCurrent = digitalRead(encoderpinB);
+  if (encoderpinACurrent != encoderpinAPrev || encoderpinBCurrent != encoderpinBPrev)
   {
      encoderPosition--;
      //Serial.println(encoderPosition);
-     if(millis() - prevClickTime < speedtarget)
+     newClickTime = millis() - prevClickTime;
+     if(newClickTime + speedchangebuffer < speedtarget)
      {
-        power -= 1;
-        analogWrite(MegaMotoPWMpin, power);
-        Serial.println(power);
+        //if(newClickTime > 3)
+        //{
+          power -= 1;
+          digitalWrite(MegaMotoPWMpin, LOW);
+          //delayMicroseconds(10000);
+          delay(1500);
+          analogWrite(MegaMotoPWMpin, power);
+          //Serial.println(power);
+        //}
+        Serial.println(newClickTime);
      }
      prevClickTime = millis();
   }
 
   encoderpinAPrev = encoderpinACurrent;
+  encoderpinBPrev = encoderpinBCurrent;
 
   if(encoderPosition > 0)
   {
     if(millis() - prevClickTime > speedtarget)
     {
-      if(millis() - prevPowerChangeTime > 20) // prevent power surging, change it slowly
+      if(millis() - prevPowerChangeTime > 5) // prevent power surging, change it slowly
       {
           power +=1;
           prevPowerChangeTime = millis();
-          Serial.println(power);
+          //Serial.println(power);
           analogWrite(MegaMotoPWMpin, power);
       }
       //Serial.println(millis() - prevClickTime);
