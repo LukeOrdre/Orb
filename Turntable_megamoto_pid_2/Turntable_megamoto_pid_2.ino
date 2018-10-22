@@ -1,6 +1,6 @@
 #include <PID_v1.h>
 
-double pidSetpoint = 180;
+double pidSetpoint = 7; // 7ms for 2048 clicks = 14.5 seconds, 80 frames at 5.5fps
 double pidInput, pidOutput;
 //PID(&Input, &Output, &Setpoint, Kp, Ki, Kd, Direction)
 //PID myPID(&pidInput, &pidOutput, &pidSetpoint, 0.002, 0.03, 0.002, REVERSE); //0.002, 0.02, 0.002 best so far
@@ -48,7 +48,7 @@ int bPinReading = 0;
 int bPinLong = 0;
 int bPinShort = 0;
 
-unsigned long deBounceTime = 3;
+unsigned long deBounceTime = 1;
 
 void setup()
 { 
@@ -86,7 +86,7 @@ void loop()
          clickTimes[0] = millis();
          //startTime = millis();
          clickCount = 1;
-         clickTarget = 83;
+         clickTarget = 2048;
          power = 10;
          aPinLastChangeTime = millis();
          bPinLastChangeTime = millis();
@@ -152,7 +152,7 @@ void loop()
     pidInput = (double)avgClickTime;
     myPID.Compute();
     analogWrite(MegaMotoPWMpin, (int)pidOutput);
-    if(millis() % 100 == 0) debugPrint("");
+    if(millis() % 100 == 0) debugPrint(' ');
   }
   
   if(clickCount >= clickTarget) 
@@ -258,7 +258,7 @@ void setPwmFrequency(int pin, int divisor) {
   }
 }
 
-void debugPrint(char originMessage[])
+void debugPrint(char originMessage)
 {
   if(debugMode)
   {
