@@ -2,8 +2,14 @@
 
 bool debugMode = true;
 
-double pidSetpoint = 40; // 10 factor ... 4 ticks per 15ms for 4096 clicks = 14.5 seconds, 80 frames at 5.5fps
-int clickWindow = 15; //window measured in ms for counting ticks
+// 4096 encoder clicks, both A & B = 8192.... 14500ms spin, 80 frames at 5.5fps.
+// 14.5 seconds is 483 lots of 30ms
+// 8192 / 483 = 17 clicks per window
+
+double pidSetpoint = 7.5; 
+
+int clickWindow = 30; //window measured in ms for counting ticks
+
 double turntableSpeed = 0;
 
 double pidInput, pidOutput;
@@ -20,21 +26,20 @@ double powerMin = 40; // dependent on voltage & PWM frequency. At 24V with divis
                       // 30 is enough to overcome the lowest friction with the lid on, and crawl around.
                       // at 12v with divisor 1:  40 to 90 seems like a good range
 
-double powerMax = 90; // turntable can get stuck if this is too low
+double powerMax = 150; // turntable can get stuck if this is too low
 
 double power = 0; //current power
-double oldpower=0;
-double Tf=0.001,Ts=0.014;//derivative factor, sampling time
+//double oldpower=0;
+//double Tf=0.001,Ts=0.014;//derivative factor, sampling time
 
 double powerWindowMin, powerWindowMax, powerWindowAvg; //used for debug
-double avgClickTime, clickTimeMin, clickTimeMax, clickTimeAvg; //used for debug
 
 char incomingCharacter;
 
-unsigned long startTime, now, prevClickTime;
+unsigned long startTime, lastUpdateTime, now;
 
 int clickCount = 0;
-int clicksThisWindow = 0;
+int prevClickCount = 0;
 int clickTarget = 0;
 
 int encoderPinA = 12;  // Connected to CLK on KY-040
@@ -73,33 +78,32 @@ void setup()
    bPinShort = bPinReading;
    bPinLong = bPinReading;
    
-   Serial.begin (9600);
+   Serial.begin (115200);
  } 
 
 
 void loop()
 {
+  now = millis();
+  
   if(clickTarget == 0)
   {
-    //incomingCharacter = Serial.read();
-    incomingCharacter = '1';
+    incomingCharacter = Serial.read();
+    //incomingCharacter = '1';
   
     switch (incomingCharacter) {
        case '1':
-
-         delay(2000);
-         
          power = powerMin; 
-         
-         startTime = millis();
-         
-         clickCount = 0;
-         clickTarget = 3048;
-         clicksThisWindow = 0;
-         
-         aPinLastChangeTime = millis();
-         bPinLastChangeTime = millis();
 
+         startTime = now;
+         lastUpdateTime = now; 
+         aPinLastChangeTime = now;
+         bPinLastChangeTime = now;
+
+         clickCount = 0;
+         prevClickCount = 0;
+         clickTarget = 16384;
+        
          digitalWrite(subjectLightpin, HIGH);
          
          myPid.SetOutputLimits(powerMin, powerMax);
@@ -119,13 +123,13 @@ void loop()
 
   if (aPinReading == 0 && aPinLong == 1)
   {
-     aPinLastChangeTime = millis();
+     aPinLastChangeTime = now;
      aPinShort = 0;
   }
 
   if (aPinReading == 1 && aPinLong == 0)
   {
-     aPinLastChangeTime = millis();
+     aPinLastChangeTime = now;
      aPinShort = 1;
   }
 
@@ -139,83 +143,55 @@ void loop()
 
   if (bPinReading == 0 && bPinLong == 1)
   {
-      bPinLastChangeTime = millis();
+      bPinLastChangeTime = now;
       bPinShort = 0;
   }
 
    if (bPinReading == 1 && bPinLong == 0)
    {
-      bPinLastChangeTime = millis();
+      bPinLastChangeTime = now;
       bPinShort = 1;
    }
-//    
+    
    if(bPinLong != bPinShort)
    {           
       recordClick();
       bPinLong = bPinShort;
    }
+
+   myPid.Compute();
+   power = (int)pidOutput;        
+   //power=Tf*(power-oldpower)/Ts+oldpower;
+   //oldpower = power;
+   analogWrite(MegaMotoPWMpin, power);    
   
-   if(millis() % clickWindow == 0)
+   if(now % clickWindow == 0 && now != lastUpdateTime && clickTarget != 0)
    {
-     turntableSpeed = (10 * clicksThisWindow) / (double)clickWindow;
-     clicksThisWindow = 0;
+     lastUpdateTime = now;
+     
+     turntableSpeed = (100 * ((double)clickCount - (double)prevClickCount)) / (double)clickWindow;
+     turntableSpeed /= 10;
+
+     prevClickCount = clickCount;
     
      pidInput = turntableSpeed;
-     myPid.Compute();
-      
-     power = (int)pidOutput;        
-     //power=Tf*(power-oldpower)/Ts+oldpower;
-     //oldpower = power;
-      
-     analogWrite(MegaMotoPWMpin, power);    
-   }
-    
+
     if(debugMode)
     {
-      //min, max, rolling average
-      
-      if(avgClickTime < clickTimeMin) clickTimeMin = avgClickTime;
-      if(avgClickTime > clickTimeMax) clickTimeMax = avgClickTime;
-      clickTimeAvg = (clickTimeAvg + avgClickTime) / 2; //not exactly accurate but a good guide
 
-      if(clickTimeMax > 30) clickTimeMax = 30;
-      if(clickTimeMin > 30) clickTimeMin = 30;
-      if(clickTimeAvg > 30) clickTimeAvg = 30;
-
-      if(power < powerWindowMin) powerWindowMin = power;
-      if(power > powerWindowMax) powerWindowMax = power;
-      powerWindowAvg = (powerWindowAvg + (int)power) / 2; //not exactly accurate but a good guide
-      
-      if(millis() % 15 == 0)
-      {
-
-            Serial.print(turntableSpeed);
-            Serial.print("\t");
-            //Serial.print(clickTimeMin);
-            //Serial.print("\t");
-            //Serial.print(avgClickTime);
-            //Serial.print("\t");
-            //Serial.print(clickTimeMax);
-            //Serial.print("\t");
-            Serial.print(powerWindowMin);
-            Serial.print("\t");
-            //Serial.print(powerWindowAvg);
-            //Serial.print("\t");
-            Serial.print(powerWindowMax);
-            //Serial.print("\t");
-            //Serial.print(weightPower);
-            //Serial.print("\t");
-            Serial.println();
+      Serial.print(lastUpdateTime - startTime);
+      Serial.print("\t");
+      Serial.print(clickCount);
+      Serial.print("\t");
+      Serial.print(turntableSpeed);
+      Serial.print("\t");
+      Serial.print(power);
+      Serial.println();
           
-            powerWindowMin = (int)power;
-            powerWindowMax = (int)power;
-            powerWindowAvg = (int)power;
-      
-            clickTimeMin = avgClickTime;
-            clickTimeMax = avgClickTime;
-            clickTimeAvg = avgClickTime;
-      }
+      //powerWindowMin = (int)power;
+      //powerWindowMax = (int)power;
     }
+  }
   
   if(clickCount >= clickTarget)
   {
@@ -231,10 +207,6 @@ void loop()
 void recordClick()
 {
   clickCount++;
-  clicksThisWindow++;
-  now = millis();
-  avgClickTime = now - prevClickTime;
-  prevClickTime = now;
 }
 
 void setPwmFrequency(int pin, int divisor) {

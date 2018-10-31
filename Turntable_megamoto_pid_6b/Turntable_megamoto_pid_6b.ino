@@ -94,7 +94,7 @@ void loop()
     switch (incomingCharacter) {
        case '1':
 
-         delay(2000);
+         //delay(2000);
          
          power = powerMin; 
          weightPower = powerMin;
