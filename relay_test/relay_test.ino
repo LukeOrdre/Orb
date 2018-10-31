@@ -1,7 +1,7 @@
-int relayPinA = 7;
-int relayPinB = 8;
-int relayPinC = 9;
-int relayPinD = 10;
+int relayPinA = 4;
+int relayPinB = 5;
+int relayPinC = 6;
+int relayPinD = 7;
 
 char incomingCharacter;
 

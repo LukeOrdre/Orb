@@ -81,44 +81,43 @@ void setup()
    
    Serial.begin (9600);
  } 
+void pidInit(){
+  float aA,aB,aC,aD,aE,aF;
+  float apK,aTd,aTi,apN,aTf;        
+  float uX,uXold1,uXold2,eX,eXold1,eXold2,X,Xold1,Xold2,SPX;
+  
+  uX=0; uXold1=0;uXold2=0;
+  X=0;   Xold1=0; Xold2=0;
+  eX=0; eXold1=0;eXold2=0; 
+    aA=1/(Ts*Ts*aTi*apN +Ts*aTd*aTi);
+    aB=-aA*(Ts*Ts*aTi*apN -Ts*aTd*aTi);
+    aC=aA*(Ts*aTi*aTd);
+    aD=aA*aK*(Ts*Ts*aTi*apN +Ts*aTd*aTi +2*apN*Ts +2*aTd +aTd*Ts*aTi*apN);
+    aE=aA*aK*(Ts*Ts*aTi*apN -Ts*aTd*aTi -2*aTd -2*apN*Ts);
+    aF=aA*aK*(2*aTd -Ts*aTi*aTd -aTd*Ts*aTi*apN); 
+    power = powerMin;    
+}
 
 
 void loop()
 {
   if(spinMode == 0)
   {
-    //incomingCharacter = Serial.read();
-    incomingCharacter = '1';
-  
+    incomingCharacter = Serial.read();
+    //incomingCharacter = '1';
+     
     switch (incomingCharacter) {
        case '1':
+            startTime = millis();              
+            clickCount = 1;
+            clickTarget = 2048;
+         
+            aPinLastChangeTime = millis();
+            bPinLastChangeTime = millis();
 
-         delay(2000);
+            digitalWrite(subjectLightpin, HIGH);
+            spinMode = 1;
          
-         power = powerMin; 
-         weightPower = powerMin;
-         powerOverrideTime = 0;
-         
-         startTime = millis();
-         clickTimes[0] = startTime;
-         clickTimes[1] = startTime - targetClickTime;
-         clickTimes[2] = startTime - (2*targetClickTime);
-         clickTimes[3] = startTime - (3*targetClickTime);
-         clickTimes[4] = startTime - (4*targetClickTime);
-         
-         clickCount = 1;
-         clickTarget = 3048;
-         
-         aPinLastChangeTime = millis();
-         bPinLastChangeTime = millis();
-
-         digitalWrite(subjectLightpin, HIGH);
-         
-         spinMode = 1;
-         myPid.SetOutputLimits(powerMin, powerMax);
-         myPid.SetMode(AUTOMATIC);
-
-
         break;
        case '2':
          clickTarget = 80;
@@ -165,7 +164,7 @@ void loop()
   
    if(bPinLong != bPinShort)
    {           
-      recordClick();
+      //recordClick();
       bPinLong = bPinShort;
    }
   
@@ -179,11 +178,21 @@ void loop()
           avgClickTime += 0.01;
         }
         
-        pidInput = avgClickTime;
+          X = avgClickTime;
+          SPX=500;
+          eX=SPX-X;
+          uX=uXold1*aB+uXold2*aC+eX*aD+eXold1*aE+eXold2*aF;
+          uX=bTf*(uX-uXold1)/Ts+uXold1;
+            
+          if(fabs(uX)>(powerMax-1)){mot=(PWMmaxper-1)*fabs(uX)/uX;}
+          else{mot=uX;}      
+
+          uXold2=uXold1;uXold1=uX;                
+          Xold2=Xold1;Xold1=X; 
+          eXold2=eXold1;eXold1=eX;          
         
-        myPid.Compute();
-        power = (int)pidOutput;
-        analogWrite(MegaMotoPWMpin, power);    
+          power = (int)mot;
+          analogWrite(MegaMotoPWMpin, power);    
       }
       else
       {

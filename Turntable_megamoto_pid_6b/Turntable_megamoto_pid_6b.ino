@@ -4,7 +4,7 @@ bool debugMode = true;
 
 int spinMode = 0;  // 0 = stop, 1 = startup, 5 = constant, 9 = slowdown,
 
-double pidSetpoint = 7; // 7ms for 2048 clicks = 14.5 seconds, 80 frames at 5.5fps
+double pidSetpoint = 3; // 7ms for 2048 clicks = 14.5 seconds, 80 frames at 5.5fps
 
 double pidInput, pidOutput;
 
@@ -23,10 +23,11 @@ double powerMin = 40; // dependent on voltage & PWM frequency. At 24V with divis
                       // 27 turns in 11 seconds with the lid off
                       // 30 is enough to overcome the lowest friction with the lid on, and crawl around.
 
-double powerMax = 70; // turntable can get stuck if this is too low
+double powerMax = 140; // turntable can get stuck if this is too low
 
 double power = 0; //current power
-
+double oldpower=0;
+double Tf=0.001,Ts=0.014;//derivative 
 double weightPower; // for soft starting
 
 double powerWindowMin, powerWindowMax, powerWindowAvg; //used for debug
@@ -87,8 +88,8 @@ void loop()
 {
   if(spinMode == 0)
   {
-    //incomingCharacter = Serial.read();
-    incomingCharacter = '1';
+    incomingCharacter = Serial.read();
+    //incomingCharacter = '1';
   
     switch (incomingCharacter) {
        case '1':
@@ -107,7 +108,7 @@ void loop()
          clickTimes[4] = startTime - (4*targetClickTime);
          
          clickCount = 1;
-         clickTarget = 3048;
+         clickTarget = 6144;
          
          aPinLastChangeTime = millis();
          bPinLastChangeTime = millis();
@@ -165,7 +166,7 @@ void loop()
   
    if(bPinLong != bPinShort)
    {           
-      recordClick();
+      //recordClick();
       bPinLong = bPinShort;
    }
   
@@ -182,7 +183,11 @@ void loop()
         pidInput = avgClickTime;
         
         myPid.Compute();
-        power = (int)pidOutput;
+        
+        power = (int)pidOutput;        
+        power=Tf*(power-oldpower)/Ts+oldpower;
+        oldpower = power;
+        
         analogWrite(MegaMotoPWMpin, power);    
       }
       else
