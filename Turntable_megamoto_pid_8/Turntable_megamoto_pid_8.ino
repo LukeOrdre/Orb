@@ -33,7 +33,12 @@ int clickCount = 0;
 int prevClickCount = 0;
 int clickTarget = 0;
 
-int subjectLightpin = 7;
+int subjectLightPin = 1;  //normally ON
+int leftDoorLightPin = 2; //normally ON
+int rightDoorLightPin = 3; //normally ON
+int laserLightPin = 4; //normally ON
+
+
 int MegaMotoPWMpin = 11;
 int encoderPinA = 12;  // Connected to CLK on KY-040
 int encoderPinB = 13;  // Connected to DT on KY-040
@@ -57,7 +62,13 @@ void setup()
     pinMode (encoderPinA,INPUT);
     pinMode (encoderPinB,INPUT);
     pinMode (MegaMotoPWMpin, OUTPUT);
-    pinMode (subjectLightpin, OUTPUT);
+    
+    pinMode (subjectLightPin, OUTPUT);
+    pinMode (leftDoorLightPin, OUTPUT);
+    pinMode (rightDoorLightPin, OUTPUT);
+    pinMode (laserLightPin, OUTPUT);
+
+    switchLightsOFF();
 
     setPwmFrequency(MegaMotoPWMpin, pwmDivisor);
 
@@ -192,7 +203,9 @@ void loop()
         clickCount = 0;
         clickTarget = 0;
         digitalWrite(MegaMotoPWMpin, LOW);
-        digitalWrite(subjectLightpin, LOW);
+        
+        switchLightsOFF();
+        
         myPid.SetMode(MANUAL);
         delay(2000);
     }
@@ -216,11 +229,27 @@ void initializeSpin()
     prevClickCount = 0;
     clickTarget = 16384;
 
-    digitalWrite(subjectLightpin, HIGH);
+    switchLightsON();
 
     myPid.SetOutputLimits(powerMin, powerMax);
     myPid.SetMode(AUTOMATIC);
 
+}
+
+void switchLightsOFF()
+{
+    digitalWrite(subjectLightPin, LOW);
+    digitalWrite(leftDoorLightPin, LOW);
+    digitalWrite(rightDoorLightPin, LOW);
+    digitalWrite(laserLightPin, HIGH);
+}
+
+void switchLightsON()
+{
+    digitalWrite(subjectLightPin, HIGH);
+    digitalWrite(leftDoorLightPin, HIGH);
+    digitalWrite(rightDoorLightPin, HIGH);
+    digitalWrite(laserLightPin, LOW);
 }
 
 void setPwmFrequency(int pin, int divisor) {
