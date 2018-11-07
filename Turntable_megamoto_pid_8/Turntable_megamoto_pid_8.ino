@@ -121,6 +121,12 @@ void loop()
             clickWindow = 16;
             initializeSpin();
             break;
+        case 'L':
+            switchLightsON();
+            break;
+        case 'D':
+            switchLightsOFF();
+            break;
         }
     }
 
@@ -200,9 +206,7 @@ void loop()
         clickCount = 0;
         clickTarget = 0;
         digitalWrite(MegaMotoPWMpin, LOW);
-        
-        switchLightsOFF();
-        
+                
         myPid.SetMode(MANUAL);
         delay(2000);
     }
@@ -227,8 +231,6 @@ void initializeSpin()
     clickCount = 0;
     prevClickCount = 0;
     clickTarget = 16384;
-
-    switchLightsON();
 
     myPid.SetOutputLimits(powerMin, powerMax);
     myPid.SetMode(AUTOMATIC);
