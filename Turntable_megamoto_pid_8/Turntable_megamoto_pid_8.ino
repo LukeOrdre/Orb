@@ -203,12 +203,17 @@ void loop()
 
     if(clickCount >= clickTarget)
     {
+        //only switch off lights at end of turntable rotation
+        if(clickTarget != 0){
+          switchLightsOFF();
+        }
+      
         clickCount = 0;
         clickTarget = 0;
         digitalWrite(MegaMotoPWMpin, LOW);
-                
+        
         myPid.SetMode(MANUAL);
-        delay(2000);
+        delay(1000);
     }
 }
 
@@ -231,6 +236,8 @@ void initializeSpin()
     clickCount = 0;
     prevClickCount = 0;
     clickTarget = 16384;
+
+    switchLightsON();
 
     myPid.SetOutputLimits(powerMin, powerMax);
     myPid.SetMode(AUTOMATIC);
