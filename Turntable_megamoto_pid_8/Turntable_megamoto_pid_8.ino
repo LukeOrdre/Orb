@@ -1,11 +1,8 @@
 #include <PID_v1.h>
-
-bool debugMode = true;
-
+int lastSerialWriteClick = 0;
 // 4096 encoder clicks, both A & B = 8192.... 14500ms spin, 80 frames at 5.5fps.
 // 14.5 seconds is 483 lots of 30ms
 // 8192 / 483 = 17 clicks per window
-
 double pidInput, pidOutput, pidSetpoint = 0.75;
 
 int clickWindow = 28; //window measured in ms for counting ticks
@@ -80,7 +77,7 @@ void setup()
     bPinShort = bPinReading;
     bPinLong = bPinReading;
 
-    Serial.begin (115200);
+    Serial.begin (230400);
 }
 
 
@@ -95,7 +92,7 @@ void loop()
 
         switch (incomingCharacter) {
         case '1':
-            pidSetpoint = 7.5;
+            pidSetpoint = 7.4;
             clickWindow = 28;
             myPid.SetTunings(1.5, 20, 0);
             initializeSpin();
@@ -124,7 +121,12 @@ void loop()
             clickWindow = 16;
             initializeSpin();
             break;
-
+        case 'L':
+            switchLightsON();
+            break;
+        case 'D':
+            switchLightsOFF();
+            break;
         }
     }
 
@@ -184,30 +186,34 @@ void loop()
 
         pidInput = turntableSpeed;
 
-        if(debugMode)
-        {
+    }
 
-            Serial.print(lastUpdateTime - startTime);
-            Serial.print("\t");
-            Serial.print(clickCount);
-            Serial.print("\t");
-            Serial.print(turntableSpeed);
-            Serial.print("\t");
-            Serial.print(power);
-            Serial.println();
-        }
+    int currPrintPos = clickCount / 20;
+    if((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick){
+        lastSerialWriteClick = currPrintPos;
+        Serial.print(lastUpdateTime - startTime);
+        Serial.print("\t");
+        Serial.print(clickCount);
+        Serial.print("\t");
+        Serial.print(turntableSpeed);
+        Serial.print("\t");
+        Serial.print(power);
+        Serial.println();
     }
 
     if(clickCount >= clickTarget)
     {
+        //only switch off lights at end of turntable rotation
+        if(clickTarget != 0){
+          switchLightsOFF();
+        }
+      
         clickCount = 0;
         clickTarget = 0;
         digitalWrite(MegaMotoPWMpin, LOW);
         
-        switchLightsOFF();
-        
         myPid.SetMode(MANUAL);
-        delay(2000);
+        delay(1000);
     }
 }
 
@@ -218,6 +224,8 @@ void recordClick()
 
 void initializeSpin()
 {
+    lastSerialWriteClick = 0;
+  
     power = powerMin;
 
     startTime = now;
