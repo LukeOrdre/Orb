@@ -190,7 +190,7 @@ void loop()
 
     int currPrintPos = clickCount / 20;
     if((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick){
-        lastSerialWriteClick = clickCount / 20;
+        lastSerialWriteClick = currPrintPos;
         Serial.print(lastUpdateTime - startTime);
         Serial.print("\t");
         Serial.print(clickCount);
@@ -203,12 +203,17 @@ void loop()
 
     if(clickCount >= clickTarget)
     {
+        //only switch off lights at end of turntable rotation
+        if(clickTarget != 0){
+          switchLightsOFF();
+        }
+      
         clickCount = 0;
         clickTarget = 0;
         digitalWrite(MegaMotoPWMpin, LOW);
-                
+        
         myPid.SetMode(MANUAL);
-        delay(2000);
+        delay(1000);
     }
 }
 
@@ -231,6 +236,8 @@ void initializeSpin()
     clickCount = 0;
     prevClickCount = 0;
     clickTarget = 16384;
+
+    switchLightsON();
 
     myPid.SetOutputLimits(powerMin, powerMax);
     myPid.SetMode(AUTOMATIC);
