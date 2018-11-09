@@ -1,8 +1,12 @@
 #include <PID_v1.h>
-int lastSerialWriteClick = 0;
+#include <TimerOne.h>
+
+bool debugMode = true;
+
 // 4096 encoder clicks, both A & B = 8192.... 14500ms spin, 80 frames at 5.5fps.
 // 14.5 seconds is 483 lots of 30ms
 // 8192 / 483 = 17 clicks per window
+
 double pidInput, pidOutput, pidSetpoint = 0.75;
 
 int clickWindow = 28; //window measured in ms for counting ticks
@@ -11,8 +15,6 @@ double turntableSpeed = 0;
 
 int pidSampleInterval = 1; //ms between samples
 
-int pwmDivisor = 1; // 1 for 31.2khz (inaudible) or 8 (audible) for 3.9khz Timer 2 PWM frequency
-
 PID myPid(&pidInput, &pidOutput, &pidSetpoint, 1.5, 50, 0, DIRECT); //1.5, 15, 0 seems to work
 
 double powerMin = 40; // dependent on voltage & PWM frequency. At 24V with divisor 1:
@@ -20,7 +22,7 @@ double powerMin = 40; // dependent on voltage & PWM frequency. At 24V with divis
 // 30 is enough to overcome the lowest friction with the lid on, and crawl around.
 // at 12v with divisor 1:  40 to 90 seems like a good range
 
-double powerMax = 150; // turntable can get stuck if this is too low
+double powerMax = 500; // turntable can get stuck if this is too low
 
 double power = 0; //current power
 
@@ -35,8 +37,7 @@ int leftDoorLightPin = 2; //normally ON
 int rightDoorLightPin = 3; //normally ON
 int laserLightPin = 4; //normally ON
 
-
-int MegaMotoPWMpin = 11;
+int PWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
 int encoderPinB = 13;  // Connected to DT on KY-040
 
@@ -52,13 +53,15 @@ int bPinShort = 0;
 
 void setup()
 {
+    Timer1.initialize(100);  //100us = 10khz
+  
     myPid.SetMode(MANUAL);
     myPid.SetOutputLimits(powerMin, powerMax);
     myPid.SetSampleTime(pidSampleInterval);
 
     pinMode (encoderPinA,INPUT);
     pinMode (encoderPinB,INPUT);
-    pinMode (MegaMotoPWMpin, OUTPUT);
+    pinMode (PWMpin, OUTPUT);
     
     pinMode (subjectLightPin, OUTPUT);
     pinMode (leftDoorLightPin, OUTPUT);
@@ -66,8 +69,6 @@ void setup()
     pinMode (laserLightPin, OUTPUT);
 
     switchLightsOFF();
-
-    setPwmFrequency(MegaMotoPWMpin, pwmDivisor);
 
     aPinReading = digitalRead(encoderPinA);
     aPinShort = aPinReading;
@@ -77,7 +78,7 @@ void setup()
     bPinShort = bPinReading;
     bPinLong = bPinReading;
 
-    Serial.begin (230400);
+    Serial.begin (115200);
 }
 
 
@@ -92,7 +93,7 @@ void loop()
 
         switch (incomingCharacter) {
         case '1':
-            pidSetpoint = 7.4;
+            pidSetpoint = 7.5;
             clickWindow = 28;
             myPid.SetTunings(1.5, 20, 0);
             initializeSpin();
@@ -121,12 +122,7 @@ void loop()
             clickWindow = 16;
             initializeSpin();
             break;
-        case 'L':
-            switchLightsON();
-            break;
-        case 'D':
-            switchLightsOFF();
-            break;
+
         }
     }
 
@@ -174,7 +170,8 @@ void loop()
     power = (int)pidOutput;
     //power=Tf*(power-oldpower)/Ts+oldpower;
     //oldpower = power;
-    analogWrite(MegaMotoPWMpin, power);
+
+    Timer1.pwm(PWMpin,power);  
 
     if(now % clickWindow == 0 && now != lastUpdateTime && clickTarget != 0)
     {
@@ -186,34 +183,30 @@ void loop()
 
         pidInput = turntableSpeed;
 
-    }
+        if(debugMode)
+        {
 
-    int currPrintPos = clickCount / 20;
-    if((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick){
-        lastSerialWriteClick = currPrintPos;
-        Serial.print(lastUpdateTime - startTime);
-        Serial.print("\t");
-        Serial.print(clickCount);
-        Serial.print("\t");
-        Serial.print(turntableSpeed);
-        Serial.print("\t");
-        Serial.print(power);
-        Serial.println();
+            Serial.print(lastUpdateTime - startTime);
+            Serial.print("\t");
+            Serial.print(clickCount);
+            Serial.print("\t");
+            Serial.print(turntableSpeed);
+            Serial.print("\t");
+            Serial.print(power);
+            Serial.println();
+        }
     }
 
     if(clickCount >= clickTarget)
     {
-        //only switch off lights at end of turntable rotation
-        if(clickTarget != 0){
-          switchLightsOFF();
-        }
-      
         clickCount = 0;
         clickTarget = 0;
-        digitalWrite(MegaMotoPWMpin, LOW);
+        digitalWrite(PWMpin, LOW);
+        
+        switchLightsOFF();
         
         myPid.SetMode(MANUAL);
-        delay(1000);
+        delay(2000);
     }
 }
 
@@ -224,8 +217,6 @@ void recordClick()
 
 void initializeSpin()
 {
-    lastSerialWriteClick = 0;
-  
     power = powerMin;
 
     startTime = now;
@@ -259,62 +250,4 @@ void switchLightsON()
     digitalWrite(rightDoorLightPin, HIGH);
     digitalWrite(laserLightPin, LOW);
 }
-
-void setPwmFrequency(int pin, int divisor) {
-    byte mode;
-    if(pin == 5 || pin == 6 || pin == 9 || pin == 10) { // Timer0 or Timer1
-        switch(divisor) {
-        case 1:
-            mode = 0x01;
-            break;
-        case 8:
-            mode = 0x02;
-            break;
-        case 64:
-            mode = 0x03;
-            break;
-        case 256:
-            mode = 0x04;
-            break;
-        case 1024:
-            mode = 0x05;
-            break;
-        default:
-            return;
-        }
-        if(pin == 5 || pin == 6) {
-            TCCR0B = TCCR0B & 0b11111000 | mode; // Timer0
-        } else {
-            TCCR1B = TCCR1B & 0b11111000 | mode; // Timer1
-        }
-    } else if(pin == 3 || pin == 11) {
-        switch(divisor) {
-        case 1:
-            mode = 0x01;
-            break;
-        case 8:
-            mode = 0x02;
-            break;
-        case 32:
-            mode = 0x03;
-            break;
-        case 64:
-            mode = 0x04;
-            break;
-        case 128:
-            mode = 0x05;
-            break;
-        case 256:
-            mode = 0x06;
-            break;
-        case 1024:
-            mode = 0x7;
-            break;
-        default:
-            return;
-        }
-        TCCR2B = TCCR2B & 0b11111000 | mode; // Timer2
-    }
-}
-
 
