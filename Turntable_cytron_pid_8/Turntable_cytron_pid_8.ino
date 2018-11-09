@@ -32,10 +32,14 @@ int clickCount = 0;
 int prevClickCount = 0;
 int clickTarget = 0;
 
-int subjectLightPin = 1;  //normally ON
-int leftDoorLightPin = 2; //normally ON
-int rightDoorLightPin = 3; //normally ON
-int laserLightPin = 4; //normally ON
+
+int leftDoorLightPin = 5; //normally ON
+int rightDoorLightPin = 4; //normally ON
+int ringLightPin = 3; //normally OFF
+int subjectLightPin = 2;  //normally ON
+int laserLightPin = 1; //normally ON
+int unusedPin = 0;
+
 
 int PWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
@@ -63,7 +67,7 @@ void setup()
     pinMode (encoderPinB,INPUT);
     pinMode (PWMpin, OUTPUT);
     
-    pinMode (subjectLightPin, OUTPUT);
+    pinMode (ringLightPin, OUTPUT);
     pinMode (leftDoorLightPin, OUTPUT);
     pinMode (rightDoorLightPin, OUTPUT);
     pinMode (laserLightPin, OUTPUT);
@@ -186,9 +190,9 @@ void loop()
         if(debugMode)
         {
 
-            Serial.print(lastUpdateTime - startTime);
+            //Serial.print(lastUpdateTime - startTime);
             Serial.print("\t");
-            Serial.print(clickCount);
+            //Serial.print(clickCount);
             Serial.print("\t");
             Serial.print(turntableSpeed);
             Serial.print("\t");
@@ -237,7 +241,7 @@ void initializeSpin()
 
 void switchLightsOFF()
 {
-    digitalWrite(subjectLightPin, LOW);
+    digitalWrite(ringLightPin, HIGH);
     digitalWrite(leftDoorLightPin, LOW);
     digitalWrite(rightDoorLightPin, LOW);
     digitalWrite(laserLightPin, HIGH);
@@ -245,7 +249,7 @@ void switchLightsOFF()
 
 void switchLightsON()
 {
-    digitalWrite(subjectLightPin, HIGH);
+    digitalWrite(ringLightPin, LOW);
     digitalWrite(leftDoorLightPin, HIGH);
     digitalWrite(rightDoorLightPin, HIGH);
     digitalWrite(laserLightPin, LOW);
