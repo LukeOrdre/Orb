@@ -121,6 +121,12 @@ void loop()
             clickWindow = 16;
             initializeSpin();
             break;
+        case '6':
+            pidSetpoint = 7.3;
+            clickWindow = 28;
+            myPid.SetTunings(1.5, 20, 0);
+            initializeSpin();
+            break;
         case 'L':
             switchLightsON();
             break;
