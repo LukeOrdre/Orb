@@ -44,7 +44,7 @@ int MegaMotoPWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
 int encoderPinB = 13;  // Connected to DT on KY-040
 
-unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, bPinLastChangeTime;
+unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, bPinLastChangeTime, lastCaptureTime;
 
 int aPinReading = 0;
 int aPinLong = 0;
@@ -59,8 +59,15 @@ int bPinShort = 0;
 //1 img spacing = 112
 //90deg 444
 //448
-int captureStartClick = 8028;//7632//8192
-int captureStopClick = 16188;
+
+int encoderClicksPerSpin = 8192;
+
+int captureStartClick = 4096;
+int shutterReleaseCompensation = 170;
+int captureCount = 72;
+int capturePeriod = 100;
+
+int captureIntervalClicks = encoderClicksPerSpin / captureCount;
 
 void setup()
 {
@@ -109,10 +116,10 @@ void loop()
 
     switch (incomingCharacter) {
       case 'F':
-        initFocus();
+        focus();
         break;
       case 'C':
-        holdCapture();
+        startCapture();
         break;
       case 'S':
         stopCapture();
@@ -220,12 +227,12 @@ void loop()
 
   }
 
-  if (clickCount >= captureStartClick && clickCount <= captureStopClick) {
-    holdCapture();
-  }
-  else if (clickCount > captureStopClick) {
-    stopCapture();
-  }
+//  if (clickCount >= captureStartClick && clickCount <= captureStopClick) {
+//    startCapture();
+//  }
+//  else if (clickCount > captureStopClick) {
+//    stopCapture();
+//  }
 
   int currPrintPos = clickCount / 20;
   if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
@@ -238,6 +245,18 @@ void loop()
     Serial.print("\t");
     Serial.print(power);
     Serial.println();
+  }
+
+  if(clickCount % captureIntervalClicks == 0)
+  {
+      startCapture();
+      lastCaptureTime = now;
+  }
+
+  if(now >= lastCaptureTime + capturePeriod)
+  {
+      stopCapture();
+      focus();
   }
 
   if (clickCount >= clickTarget)
@@ -261,11 +280,11 @@ void recordClick()
   clickCount++;
 }
 
-void initFocus() {
+void focus() {
   digitalWrite(cameraFocusPin, LOW);
 }
 
-void holdCapture() {
+void startCapture() {
   digitalWrite(cameraFocusPin, LOW);
   digitalWrite(cameraShutterPin, LOW);
 }
@@ -295,7 +314,7 @@ void initializeSpin()
   myPid.SetOutputLimits(powerMin, powerMax);
   myPid.SetMode(AUTOMATIC);
 
-  initFocus();
+  focus();
 }
 
 void switchLightsOFF()
@@ -322,3 +341,6 @@ void switchLightsON()
   digitalWrite(rightDoorLightPin, HIGH);
   digitalWrite(laserLightPin, LOW);
 }
+
+
+
