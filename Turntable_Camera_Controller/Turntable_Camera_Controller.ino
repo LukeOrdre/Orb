@@ -44,7 +44,7 @@ int MegaMotoPWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
 int encoderPinB = 13;  // Connected to DT on KY-040
 
-unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, bPinLastChangeTime, lastCaptureTime;
+unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, bPinLastChangeTime, lastCaptureTime, lastFocusTime;
 
 int aPinReading = 0;
 int aPinLong = 0;
@@ -64,7 +64,8 @@ int encoderClicksPerSpin = 8192;
 int shutterReleaseCompensation = 0;
 int captureTarget = 72;
 int captures = 0;
-int capturePeriod = 20;
+int capturePeriod = 50;
+int focusPeriod = 150;
 
 int captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
 
@@ -126,8 +127,8 @@ void loop()
         stopCapture();
         break;
       case '1':
-        pidSetpoint = 5;
-        clickWindow = 28;
+        pidSetpoint = 3;
+        clickWindow = 20;
         myPid.SetTunings(3, 20, 0);
         initializeSpin();
         break;
@@ -230,24 +231,9 @@ void loop()
   
     }
   
-  //  if (clickCount >= captureStartClick && clickCount <= captureStopClick) {
-  //    startCapture();
-  //  }
-  //  else if (clickCount > captureStopClick) {
-  //    stopCapture();
-  //  }
-  
     int currPrintPos = clickCount / 20;
     if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
       lastSerialWriteClick = currPrintPos;
-  //    Serial.print(lastUpdateTime - startTime);
-  //    Serial.print("\t");
-  //    Serial.print(clickCount);
-  //    Serial.print("\t");
-  //    Serial.print(turntableSpeed);
-  //    Serial.print("\t");
-  //    Serial.print(power);
-  //    Serial.println();
     }
   
     if(clickCount > 0 && clickTarget > 0)
@@ -265,6 +251,12 @@ void loop()
           stopCapture();
           focus();
           lastCaptureTime = 0;
+      }
+
+      if(now >= lastFocusTime + focusPeriod)
+      {
+          stopFocus();
+          lastFocusTime = 0;
       }
     }
     if (clickCount > clickTarget && clickCount > 0)
@@ -296,6 +288,7 @@ void recordClick()
 
 void focus() {
   digitalWrite(cameraFocusPin, LOW);
+  lastFocusTime = now;
 }
 
 void stopFocus() {
@@ -305,10 +298,10 @@ void stopFocus() {
 void capture() {
   lastCaptureTime = now;
   
-  digitalWrite(cameraFocusPin, LOW);
+  //digitalWrite(cameraFocusPin, LOW);
   digitalWrite(cameraShutterPin, LOW);
 
-  Serial.print(captures++); //because start at zero
+  Serial.print(captures++); //we start at zero
   Serial.print("\t");
   Serial.print(now - startTime);
   Serial.print("\t");
