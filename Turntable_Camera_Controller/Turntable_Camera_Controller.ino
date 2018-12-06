@@ -17,10 +17,7 @@ int pwmDivisor = 1; // 1 for 31.2khz (inaudible) or 8 (audible) for 3.9khz Timer
 
 PID myPid(&pidInput, &pidOutput, &pidSetpoint, 1.5, 50, 0, DIRECT); //1.5, 15, 0 seems to work
 
-double powerMin = 40; // dependent on voltage & PWM frequency. At 24V with divisor 1:
-// 27 turns in 11 seconds with the lid off
-// 30 is enough to overcome the lowest friction with the lid on, and crawl around.
-// at 12v with divisor 1:  40 to 90 seems like a good range
+double powerMin = 40; // dependent on voltage & PWM frequency
 
 double powerMax = 500; // turntable can get stuck if this is too low
 
@@ -54,19 +51,12 @@ int bPinReading = 0;
 int bPinLong = 0;
 int bPinShort = 0;
 
-//360/73=4.93
-//8192/360=22.76
-//1 img spacing = 112
-//90deg 444
-//448
-
 int encoderClicksPerSpin = 8192;
 int shutterReleaseCompensation = 0;
-int captureTarget = 72;
 int captures = 0;
+int captureTarget = 72;
 int capturePeriod = 50;
-int focusPeriod = 150;
-
+int focusPeriod = 200;
 int captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
 
 void setup()
@@ -127,16 +117,29 @@ void loop()
         stopCapture();
         break;
       case '1':
-        pidSetpoint = 3;
-        clickWindow = 20;
+        pidSetpoint = 5;
+        clickWindow = 21;
         myPid.SetTunings(3, 20, 0);
+
+        captureTarget = 72;
+        capturePeriod = 50;
+        focusPeriod = 200;
+        captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
+        
         initializeSpin();
         break;
       case '2':
-        pidSetpoint = 8.8;
-        myPid.SetTunings(1.5, 15, 0);
-        clickWindow = 25;
+        pidSetpoint = 3;
+        clickWindow = 21;
+        myPid.SetTunings(3, 20, 0);
+
+        captureTarget = 72;
+        capturePeriod = 50;
+        focusPeriod = 300;
+        captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
+        
         initializeSpin();
+
         break;
       case '3':
         pidSetpoint = 11.25;
@@ -215,8 +218,6 @@ void loop()
   
     myPid.Compute();
     power = (int)pidOutput;
-    //power=Tf*(power-oldpower)/Ts+oldpower;
-    //oldpower = power;
     Timer1.pwm(MegaMotoPWMpin, power);
   
     if (now % clickWindow == 0 && now != lastUpdateTime && clickTarget != 0)
@@ -354,14 +355,6 @@ void switchLightsOFF()
   digitalWrite(rightDoorLightPin, LOW);
   digitalWrite(laserLightPin, HIGH);
 
-////  digitalWrite(0, HIGH);
-////  digitalWrite(1, LOW);
-//  digitalWrite(2, HIGH);
-//  digitalWrite(3, HIGH);
-//  digitalWrite(4, HIGH);
-//  digitalWrite(5, HIGH);
-//  digitalWrite(6, HIGH);
-//  digitalWrite(7, HIGH);
 }
 
 void switchLightsON()
