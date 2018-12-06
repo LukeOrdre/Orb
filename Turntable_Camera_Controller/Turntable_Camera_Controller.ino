@@ -61,13 +61,12 @@ int bPinShort = 0;
 //448
 
 int encoderClicksPerSpin = 8192;
+int shutterReleaseCompensation = 0;
+int captureTarget = 72;
+int captures = 0;
+int capturePeriod = 20;
 
-int captureStartClick = 4096;
-int shutterReleaseCompensation = 170;
-int captureCount = 72;
-int capturePeriod = 100;
-
-int captureIntervalClicks = encoderClicksPerSpin / captureCount;
+int captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
 
 void setup()
 {
@@ -117,15 +116,17 @@ void loop()
     switch (incomingCharacter) {
       case 'F':
         focus();
+        delay(500);
+        stopFocus();
         break;
       case 'C':
-        startCapture();
+        capture();
         break;
       case 'S':
         stopCapture();
         break;
       case '1':
-        pidSetpoint = 7.3;
+        pidSetpoint = 5;
         clickWindow = 28;
         myPid.SetTunings(3, 20, 0);
         initializeSpin();
@@ -168,110 +169,123 @@ void loop()
         break;
     }
   }
-
-  aPinReading = digitalRead(encoderPinA);
-
-  if (aPinReading == 0 && aPinLong == 1)
+  else
   {
-    aPinLastChangeTime = now;
-    aPinShort = 0;
-  }
 
-  if (aPinReading == 1 && aPinLong == 0)
-  {
-    aPinLastChangeTime = now;
-    aPinShort = 1;
-  }
-
-  if (aPinLong != aPinShort)
-  {
-    recordClick();
-    aPinLong = aPinShort;
-  }
-
-  bPinReading = digitalRead(encoderPinB);
-
-  if (bPinReading == 0 && bPinLong == 1)
-  {
-    bPinLastChangeTime = now;
-    bPinShort = 0;
-  }
-
-  if (bPinReading == 1 && bPinLong == 0)
-  {
-    bPinLastChangeTime = now;
-    bPinShort = 1;
-  }
-
-  if (bPinLong != bPinShort)
-  {
-    recordClick();
-    bPinLong = bPinShort;
-  }
-
-  myPid.Compute();
-  power = (int)pidOutput;
-  //power=Tf*(power-oldpower)/Ts+oldpower;
-  //oldpower = power;
-  Timer1.pwm(MegaMotoPWMpin, power);
-
-  if (now % clickWindow == 0 && now != lastUpdateTime && clickTarget != 0)
-  {
-    lastUpdateTime = now;
-
-    turntableSpeed = 10 * ((double)clickCount - (double)prevClickCount) / (double)clickWindow;
-
-    prevClickCount = clickCount;
-
-    pidInput = turntableSpeed;
-
-  }
-
-//  if (clickCount >= captureStartClick && clickCount <= captureStopClick) {
-//    startCapture();
-//  }
-//  else if (clickCount > captureStopClick) {
-//    stopCapture();
-//  }
-
-  int currPrintPos = clickCount / 20;
-  if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
-    lastSerialWriteClick = currPrintPos;
-    Serial.print(lastUpdateTime - startTime);
-    Serial.print("\t");
-    Serial.print(clickCount);
-    Serial.print("\t");
-    Serial.print(turntableSpeed);
-    Serial.print("\t");
-    Serial.print(power);
-    Serial.println();
-  }
-
-  if(clickCount % captureIntervalClicks == 0)
-  {
-      startCapture();
-      lastCaptureTime = now;
-  }
-
-  if(now >= lastCaptureTime + capturePeriod)
-  {
-      stopCapture();
-      focus();
-  }
-
-  if (clickCount >= clickTarget)
-  {
-    //only switch off lights at end of turntable rotation
-    if (clickTarget != 0) {
-      switchLightsOFF();
+    aPinReading = digitalRead(encoderPinA);
+  
+    if (aPinReading == 0 && aPinLong == 1)
+    {
+      aPinLastChangeTime = now;
+      aPinShort = 0;
     }
-
-    clickCount = 0;
-    clickTarget = 0;
-    digitalWrite(MegaMotoPWMpin, LOW);
-
-    myPid.SetMode(MANUAL);
-    delay(1000);
+  
+    if (aPinReading == 1 && aPinLong == 0)
+    {
+      aPinLastChangeTime = now;
+      aPinShort = 1;
+    }
+  
+    if (aPinLong != aPinShort)
+    {
+      recordClick();
+      aPinLong = aPinShort;
+    }
+  
+    bPinReading = digitalRead(encoderPinB);
+  
+    if (bPinReading == 0 && bPinLong == 1)
+    {
+      bPinLastChangeTime = now;
+      bPinShort = 0;
+    }
+  
+    if (bPinReading == 1 && bPinLong == 0)
+    {
+      bPinLastChangeTime = now;
+      bPinShort = 1;
+    }
+  
+    if (bPinLong != bPinShort)
+    {
+      recordClick();
+      bPinLong = bPinShort;
+    }
+  
+    myPid.Compute();
+    power = (int)pidOutput;
+    //power=Tf*(power-oldpower)/Ts+oldpower;
+    //oldpower = power;
+    Timer1.pwm(MegaMotoPWMpin, power);
+  
+    if (now % clickWindow == 0 && now != lastUpdateTime && clickTarget != 0)
+    {
+      lastUpdateTime = now;
+  
+      turntableSpeed = 10 * ((double)clickCount - (double)prevClickCount) / (double)clickWindow;
+  
+      prevClickCount = clickCount;
+  
+      pidInput = turntableSpeed;
+  
+    }
+  
+  //  if (clickCount >= captureStartClick && clickCount <= captureStopClick) {
+  //    startCapture();
+  //  }
+  //  else if (clickCount > captureStopClick) {
+  //    stopCapture();
+  //  }
+  
+    int currPrintPos = clickCount / 20;
+    if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
+      lastSerialWriteClick = currPrintPos;
+  //    Serial.print(lastUpdateTime - startTime);
+  //    Serial.print("\t");
+  //    Serial.print(clickCount);
+  //    Serial.print("\t");
+  //    Serial.print(turntableSpeed);
+  //    Serial.print("\t");
+  //    Serial.print(power);
+  //    Serial.println();
+    }
+  
+    if(clickCount > 0 && clickTarget > 0)
+    {
+      if(clickCount % captureIntervalClicks == 0 && lastCaptureTime == 0)
+      {
+          if(captures < captureTarget)
+          {
+            capture();
+          }
+      }
+      
+      if(now >= lastCaptureTime + capturePeriod)
+      {
+          stopCapture();
+          focus();
+          lastCaptureTime = 0;
+      }
+    }
+    if (clickCount > clickTarget && clickCount > 0)
+    {
+      //only switch off lights at end of turntable rotation
+      if (clickTarget != 0) {
+        switchLightsOFF();
+      }
+      
+      captures = 0;
+      clickCount = 0;
+      clickTarget = 0;
+      digitalWrite(MegaMotoPWMpin, LOW);
+  
+      stopCapture();
+      stopFocus();
+      
+      myPid.SetMode(MANUAL);
+      delay(1000);
+      Serial.println("Capture Finished");
+    }
   }
 }
 
@@ -284,9 +298,22 @@ void focus() {
   digitalWrite(cameraFocusPin, LOW);
 }
 
-void startCapture() {
+void stopFocus() {
+  digitalWrite(cameraFocusPin, HIGH);
+}
+
+void capture() {
+  lastCaptureTime = now;
+  
   digitalWrite(cameraFocusPin, LOW);
   digitalWrite(cameraShutterPin, LOW);
+
+  Serial.print(captures++); //because start at zero
+  Serial.print("\t");
+  Serial.print(now - startTime);
+  Serial.print("\t");
+  Serial.println(clickCount);
+  
 }
 
 void stopCapture() {
@@ -296,6 +323,8 @@ void stopCapture() {
 
 void initializeSpin()
 {
+  Serial.println("Initialize Spin");
+  
   lastSerialWriteClick = 0;
 
   power = powerMin;
@@ -307,7 +336,7 @@ void initializeSpin()
 
   clickCount = 0;
   prevClickCount = 0;
-  clickTarget = 16384;
+  clickTarget = encoderClicksPerSpin;
 
   switchLightsON();
 
@@ -315,6 +344,14 @@ void initializeSpin()
   myPid.SetMode(AUTOMATIC);
 
   focus();
+  delay(500);
+  capture();
+  delay(capturePeriod);
+  stopCapture();
+  delay(500);
+  focus();
+
+  
 }
 
 void switchLightsOFF()
@@ -341,6 +378,4 @@ void switchLightsON()
   digitalWrite(rightDoorLightPin, HIGH);
   digitalWrite(laserLightPin, LOW);
 }
-
-
 
