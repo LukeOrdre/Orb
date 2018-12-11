@@ -1,0 +1,37 @@
+case '2':
+        pidSetpoint = 3;
+        clickWindow = 21;
+        myPid.SetTunings(3, 20, 0);
+
+        captureTarget = 72;
+        capturePeriod = 50;
+        focusPeriod = 300;
+        captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
+        
+        initializeSpin();
+
+        break;
+      case '3':
+        pidSetpoint = 11.25;
+        myPid.SetTunings(1.5, 10, 0);
+        clickWindow = 24;
+        initializeSpin();
+        break;
+      case '4':
+        pidSetpoint = 15;
+        myPid.SetTunings(1.5, 5, 0);
+        clickWindow = 24;
+        initializeSpin();
+        break;
+      case '5':
+        pidSetpoint = 22.5;
+        myPid.SetTunings(1, 3, 0);
+        clickWindow = 16;
+        initializeSpin();
+        break;
+      case '6':
+        pidSetpoint = 9.5;
+        clickWindow = 28;
+        myPid.SetTunings(1.5, 20, 0);
+        initializeSpin();
+        break;
