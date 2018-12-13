@@ -29,13 +29,13 @@ int clickCount = 0;
 int prevClickCount = 0;
 int clickTarget = 0;
 
+int cameraFocusPin = 2;
+int cameraShutterPin = 3;
+
 int subjectLightPin = 4;  //normally ON
 int leftDoorLightPin = 6; //normally ON
 int rightDoorLightPin = 7; //normally ON
 int laserLightPin = 5; //normally ON
-
-int cameraFocusPin = 2;
-int cameraShutterPin = 3;
 
 int MegaMotoPWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
@@ -80,6 +80,7 @@ void setup()
   pinMode(cameraShutterPin, OUTPUT);
 
   stopCapture();
+  stopFocus();
 
   switchLightsOFF();
 
@@ -197,9 +198,9 @@ void loop()
       prevClickCount = clickCount;
   
       pidInput = turntableSpeed;
-      //Serial.print(10+(5*turntableSpeed));
-      //Serial.print("\t");
-      //Serial.println(pidOutput);
+      Serial.print(10+(5*turntableSpeed));
+      Serial.print("\t");
+      Serial.println(pidOutput);
   
     }
 
@@ -280,13 +281,13 @@ void capture() {
   thisCaptureStartTime = now;
   digitalWrite(cameraShutterPin, LOW);
 
-  Serial.print(captures++); //we start at zero
-  Serial.print("\t");
-  Serial.print(now - startTime);
-  Serial.print("\t");
-  Serial.print(clickCount);
-  Serial.print("\t");
-  Serial.println(now - prevCaptureTime);
+//  Serial.print(captures++); //we start at zero
+//  Serial.print("\t");
+//  Serial.print(now - startTime);
+//  Serial.print("\t");
+//  Serial.print(clickCount);
+//  Serial.print("\t");
+//  Serial.println(now - prevCaptureTime);
 
   prevCaptureTime = now;
 }
