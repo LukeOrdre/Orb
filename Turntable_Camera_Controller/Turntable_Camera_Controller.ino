@@ -198,9 +198,9 @@ void loop()
       prevClickCount = clickCount;
   
       pidInput = turntableSpeed;
-      Serial.print(10+(5*turntableSpeed));
-      Serial.print("\t");
-      Serial.println(pidOutput);
+      //Serial.print(10+(5*turntableSpeed));
+      //Serial.print("\t");
+      //Serial.println(pidOutput);
   
     }
 
@@ -281,13 +281,13 @@ void capture() {
   thisCaptureStartTime = now;
   digitalWrite(cameraShutterPin, LOW);
 
-//  Serial.print(captures++); //we start at zero
-//  Serial.print("\t");
-//  Serial.print(now - startTime);
-//  Serial.print("\t");
-//  Serial.print(clickCount);
-//  Serial.print("\t");
-//  Serial.println(now - prevCaptureTime);
+  Serial.print(captures++); //we start at zero
+  Serial.print("\t");
+  Serial.print(now - startTime);
+  Serial.print("\t");
+  Serial.print(clickCount);
+  Serial.print("\t");
+  Serial.println(now - prevCaptureTime);
 
   prevCaptureTime = now;
 }
