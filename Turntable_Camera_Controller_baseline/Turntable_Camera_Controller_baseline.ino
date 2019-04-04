@@ -41,8 +41,7 @@ int MegaMotoPWMpin = 9;
 int encoderPinA = 12;  // Connected to CLK on KY-040
 int encoderPinB = 13;  // Connected to DT on KY-040
 
-unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, 
-              bPinLastChangeTime, thisCaptureStartTime, lastFocusTime, prevCaptureTime;
+unsigned long startTime, lastUpdateTime, now, aPinLastChangeTime, bPinLastChangeTime, thisCaptureStartTime, lastFocusTime, prevCaptureTime;
 
 int aPinReading = 0;
 int aPinLong = 0;
@@ -54,11 +53,7 @@ int bPinShort = 0;
 
 int encoderClicksPerSpin = 8192;
 int shutterReleaseCompensation = 0;
-int captures = 0;
-int captureTarget = 72;
-int capturePeriod = 30;
-int focusPeriod = 270;
-int captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
+int captures, captureTarget, capturePeriod, focusPeriod, captureIntervalClicks;
 
 void setup()
 {
@@ -107,42 +102,39 @@ void loop()
     //incomingCharacter = '1';
 
     switch (incomingCharacter) {
-      case 'f':
       case 'F':
         focus();
         delay(500);
         stopFocus();
         break;
-      case 'c':
       case 'C':
         capture();
         break;
-      case 's':
       case 'S':
         stopCapture();
         break;
       case '1':
-        pidSetpoint = 2; // 2 for metronome
-        clickWindow = 5; // 4 for metronome
-        myPid.SetTunings(0.1, 30, 0);  //startup mode, smooth start
-        //myPid.SetTunings(5, 1000, 0)); //normal running metronome, but isn't a perfectly smooth start
+        pidSetpoint = 1; // 2 for metronome
+        clickWindow = 8; // 4 for metronome
+        myPid.SetTunings(0.1, 200, 0);  //startup mode, smooth start
+        //myPid.SetTunings(5, 1000, 0); //normal running metronome, but isn't a perfectly smooth start
         //myPid.SetTunings(0.1, 5, 0);
         //myPid.SetTunings(1.5, 2, 0);
         //myPid.SetTunings(0.1, 10, 0);
         //myPid.SetTunings(3, 20, 0);
 
-        captureTarget = 72;
-        capturePeriod = 60;
-        focusPeriod = 250;
+        captureTarget = 60; //72
+        capturePeriod = 300; //300 works well on single shot mode
+        focusPeriod = 10;   //10 works well on single shot mode
         captureIntervalClicks = (encoderClicksPerSpin / captureTarget) + 1;
+
+        Serial.println(captureIntervalClicks);
         
         initializeSpin();
         break;
-      case 'l':
       case 'L':
         switchLightsON();
         break;
-      case 'd':
       case 'D':
         switchLightsOFF();
         break;
@@ -210,22 +202,23 @@ void loop()
   
     }
 
-    if(clickCount > 150 && clickCount < 155) //time to switch over to normal running
+    if(clickCount > 150 && clickCount < 155)
     {
-       myPid.SetTunings(5, 1000, 0); //these wouldn't give a perfectly smooth start
+       //myPid.SetTunings(5, 1000, 0); //normal running metronome, but isn't a perfectly smooth start
     }
 
-    if(clickCount > 7900 && clickCount < 7905) //time to stop.
+    if(clickCount > 7900 && clickCount < 7905)
     {
        pidSetpoint = 1;
-       myPid.SetTunings(0.1, 30, 0);  //startup/end mode, smooth
+       myPid.SetTunings(0.1, 30, 0);  //startup mode, smooth start
     }
 
      
-    int currPrintPos = clickCount / 20;
-    if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
-      lastSerialWriteClick = currPrintPos;
-    }
+//    currPrintPos = clickCount / 20;
+//    
+//    if ((clickCount % 20 == 0 && currPrintPos > lastSerialWriteClick) || currPrintPos > lastSerialWriteClick) {
+//      lastSerialWriteClick = currPrintPos;
+//    }
   
     if(clickCount > 0 && clickTarget > 0)
     {
@@ -237,26 +230,21 @@ void loop()
           }
       }
       
-      if(now >= thisCaptureStartTime + capturePeriod)
+      if(now >= thisCaptureStartTime + capturePeriod && thisCaptureStartTime != 0)
       {
           stopCapture();
           //focus();
           thisCaptureStartTime = 0;
       }
 
-      if(now >= lastFocusTime + focusPeriod)
-      {
-          //stopFocus();
-          lastFocusTime = 0;
-      }
+//      if(now >= lastFocusTime + focusPeriod)
+//      {
+//          //stopFocus();
+//          lastFocusTime = 0;
+//      }
     }
     if (clickCount > clickTarget && clickCount > 0)
     {
-      //only switch off lights at end of turntable rotation
-      if (clickTarget != 0) {
-        switchLightsOFF();
-      }
-      
       captures = 0;
       clickCount = 0;
       clickTarget = 0;
@@ -269,25 +257,37 @@ void loop()
       myPid.SetMode(MANUAL);
       myPid.Compute();
       delay(1000);
+      
+      //only switch off lights at end of turntable rotation
+      //if (clickTarget != 0) {
+        switchLightsOFF();
+      //}
       Serial.println("Capture Finished");
     }
   }
 }
 
 void focus() {
+  Serial.println("focus");
+  
   digitalWrite(cameraFocusPin, LOW);
+  
   lastFocusTime = now;
 }
 
 void stopFocus() {
+  Serial.println("stop focus");
+  
   digitalWrite(cameraFocusPin, HIGH);
 }
 
 void capture() {
+  //Serial.println("capture");
+  
   thisCaptureStartTime = now;
   digitalWrite(cameraShutterPin, LOW);
-
-  Serial.print(captures++); //we start at zero
+  captures++;
+  Serial.print(captures); //we start at zero
   Serial.print("\t");
   Serial.print(now - startTime);
   Serial.print("\t");
@@ -299,6 +299,7 @@ void capture() {
 }
 
 void stopCapture() {
+  //Serial.println("stop capture");
   digitalWrite(cameraShutterPin, HIGH);
 }
 
@@ -328,13 +329,18 @@ void initializeSpin()
   myPid.SetMode(AUTOMATIC);
 
   focus();
-  delay(700);
+  delay(500);
+  stopFocus();
+  delay(500);
+  stopCapture();
+  delay(500);
   capture();
   delay(capturePeriod);
   stopCapture();
   //delay(500);
-  stopFocus();
 
+
+  
 }
 
 void switchLightsOFF()
@@ -343,6 +349,7 @@ void switchLightsOFF()
   digitalWrite(leftDoorLightPin, LOW);
   digitalWrite(rightDoorLightPin, LOW);
   digitalWrite(laserLightPin, HIGH);
+
 }
 
 void switchLightsON()
@@ -352,4 +359,3 @@ void switchLightsON()
   digitalWrite(rightDoorLightPin, HIGH);
   digitalWrite(laserLightPin, LOW);
 }
-
